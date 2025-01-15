@@ -1,2 +1,2 @@
-cd functions/manzai_multi_agent
-zip -r ../../functions/manzai_multi_agent.zip .
+cd ../../../functions/manzai_multi_agent
+zip -r manzai_multi_agent.zip .

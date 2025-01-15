@@ -1,6 +1,7 @@
 variable "project_id" {
   description = "GCP Project ID"
   type        = string
+  default     = "ai-agent-hackathon-447707"
 }
 
 variable "region" {
