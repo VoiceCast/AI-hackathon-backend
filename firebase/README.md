@@ -34,7 +34,6 @@ Firestore はドキュメントベースの NoSQL 構造を持ちます。それ
 - `skills` (map): 芸人のスキル情報。
   - `role` (string): 役割（例: パフォーマー、作家）。
   - `voice_characteristics` (string): 声の特徴（例: 深い声、高音）。
-  - `improv_skill` (number): 即興スキル（1〜5）。
   - `writing_skill` (number): 作文スキル（1〜5）。
   - `specialty_topics` (array of strings): 得意なトピック（例: サタイア、即興）。
 
@@ -116,7 +115,6 @@ Firestore はドキュメントベースの NoSQL 構造を持ちます。それ
   "skills": {
     "role": "performer",
     "voice_characteristics": "深い声",
-    "improv_skill": 4,
     "writing_skill": 5,
     "specialty_topics": ["サタイア", "即興"]
   }
