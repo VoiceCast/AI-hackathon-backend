@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json
+from firestore import db
+import collections
 
 # 例として対象のリストページURL（実際のURLに合わせて変更してください）
 base_url = "https://www.m-1gp.com/combi/"
@@ -17,7 +19,7 @@ if response.status_code == 200:
     soup = BeautifulSoup(response.text, "html.parser")
     table = soup.find("table", class_="footable")
     rows = table.find_all("tr")
-    
+
     for row in rows:
         a_tag = row.find("a")
         if a_tag:
@@ -51,10 +53,10 @@ for comedian_name, detail_url in comedian_urls:
         "所属": "不明",   # 後で所属情報が取得できれば更新
         "メンバー": []    # 各メンバーの情報を格納
     }
-    
+
     if detail_response.status_code == 200:
         detail_soup = BeautifulSoup(detail_response.text, "html.parser")
-        
+
         # 所属情報を取得（<div class="profile-info">内の<dl>にまとめられていると想定）
         profile_info = detail_soup.find('div', class_='profile-info')
         member_agency = "不明"
@@ -73,7 +75,7 @@ for comedian_name, detail_url in comedian_urls:
                 print("所属:", member_agency)
         else:
             print("プロフィールの所属情報が見つかりません")
-        
+
         # メンバープロフィールを取得 （div.member-list-con 内の <dl> にまとめられていると想定）
         member_containers = detail_soup.select("div.member-list-con")
         if member_containers:
@@ -100,9 +102,11 @@ for comedian_name, detail_url in comedian_urls:
                       - 特徴(specialty_topics)
                       - 声の特徴(voice_characteristics)
                       - 生年月日(birthdate)→{member_birthday}
+                      - ネタを書く能力(writing_skill)→1~5の5段階評価
 
                       ##出力形式
                       - JSON形式だけを厳密に出力してください
+                       - ```jsonなども不要。{{}}で囲んでください。```
                       - 例
                       {{
                         "name": "ジョン・ドウ",
@@ -112,7 +116,8 @@ for comedian_name, detail_url in comedian_urls:
                         "skills": {{
                           "role": "performer",
                           "voice_characteristics": "深い声",
-                          "specialty_topics": "独特の言葉選びや予想外の展開を用いた知的なワードセンスのボケを展開。"
+                          "specialty_topics": "独特の言葉選びや予想外の展開を用いた知的なワードセンスのボケを展開。",
+                          "writing_skill": 5,
                         }}
                       }}
                     '''
@@ -137,16 +142,22 @@ for comedian_name, detail_url in comedian_urls:
                     response_api = requests.post(url_api, headers=headers, json=payload)
                     data = json.loads(response_api.text)
                     content = data['choices'][0]['message']['content']
-                    print(content)
-                    results.append(content)
-                    members = comedian_data.get("メンバー")
-                    members.append({"名前": member_name, "生年月日": member_birthday})
-                    comedian_data["メンバー"] = members
-                    print("メンバー名:", member_name, "| 生年月日:", member_birthday)
+                    print("APIからのレスポンス:", content)
+
+                    # JSON文字列として変換を試みる
+                    try:
+                        content_dict = json.loads(content)
+                        results.append(content_dict)
+                    except json.JSONDecodeError as e:
+                        print("JSONのパースに失敗しました:", e)
+                        print("受け取った内容:", content)
+                        # 必要に応じて、ここで処理をスキップする、もしくはそのまま文字列を保存するなど対応する
+                        continue
                 else:
                     print("メンバー情報が見つかりません")
         else:
             print("メンバープロフィールのセクションが見つかりません")
+        # comedian_data にメンバー情報を追加する場合は、下記のようにすればよい
         # results.append(comedian_data)
         print("-" * 40)
     else:
@@ -155,3 +166,8 @@ for comedian_name, detail_url in comedian_urls:
 # JSON形式に整形して出力
 json_output = json.dumps(results, ensure_ascii=False, indent=2)
 print(json_output)
+
+## Firestoreに保存
+for result in results:
+    db.collection('Comedians').add(result)
+    print("Firestoreにデータを保存しました")
