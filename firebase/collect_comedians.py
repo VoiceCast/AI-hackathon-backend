@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json
 from firestore import db
-import collections
 
 # 例として対象のリストページURL（実際のURLに合わせて変更してください）
 base_url = "https://www.m-1gp.com/combi/"
