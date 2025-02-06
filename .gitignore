@@ -1,4 +1,6 @@
-.venv
+.venv/
 logs/
 .DS_Store
 .terraform/
+firebase/serviceAccountKey.json
+firebase/__pycache__
