@@ -2,7 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json
-from firestore import db
+from utils.firestore import db
+from utils.perplexity import get_info_by_perplexity
 
 results = []  # 各コンビ毎の情報を格納するリスト
 # 例として対象のリストページURL（実際のURLに合わせて変更してください）
@@ -75,7 +76,6 @@ for page in range(2, 478):
                         member_name = info.get("名前", "不明")
                         member_birthday = info.get("生年月日", "不明")
 
-                        url_api = 'https://api.perplexity.ai/chat/completions'
                         prompt = f'''{member_name}に関する情報を教えてください。
                         ##必要事項
                         - 所属事務所(agency)→{member_agency}
@@ -121,18 +121,15 @@ for page in range(2, 478):
                             'Content-Type': 'application/json',
                         }
 
-                        response_api = requests.post(
-                            url_api, headers=headers, json=payload)
-                        data = json.loads(response_api.text)
-                        content = data['choices'][0]['message']['content']
-                        print("APIからのレスポンス:", content)
+                        response = get_info_by_perplexity(prompt)
+                        print("APIからのレスポンス:", response)
 
                         try:
-                            content_dict = json.loads(content)
+                            content_dict = json.loads(response)
                             results.append(content_dict)
                         except json.JSONDecodeError as e:
                             print("JSONのパースに失敗しました:", e)
-                            print("受け取った内容:", content)
+                            print("受け取った内容:", response)
                             continue
             print("-" * 40)
     except requests.RequestException as e:
