@@ -1,6 +1,8 @@
 .venv/
 logs/
 .DS_Store
-.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.terraform/
 firebase/serviceAccountKey.json
 firebase/__pycache__
