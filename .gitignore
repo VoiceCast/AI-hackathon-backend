@@ -4,5 +4,6 @@ logs/
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform/.terraform/
-firebase/serviceAccountKey.json
+utillibs/serviceAccountKey.json
 firebase/__pycache__
+__pycache__
