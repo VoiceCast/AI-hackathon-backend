@@ -29,6 +29,7 @@ TSUKKOMI_AGENT_ID = "29af0432-abd8-40ed-b788-27e4bc17c13d"
 JUDGE_AGENT_ID = "2aee97f2-0d98-40b1-ac23-8e446b1633db"
 SESSION_ID = "10b063a6-fe87-40c1-a44e-a53d29baabf6"
 ENVIRONMENT_ID = "-"  # デフォルト環境を使用
+ALLOWED_ORIGIN = "http://localhost:3000"
 
 def get_random_comedians_data():
     # "Scripts" コレクションからデータを取得
@@ -278,6 +279,14 @@ def extract_text_from_response(response):
 # 🎭 Cloud Function のエントリーポイント
 @functions_framework.http
 def manzai_agents(request):
+    if request.method == "OPTIONS":
+        response = jsonify({"message": "CORS preflight success"})
+        response.headers.add("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
+        response.headers.add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Max-Age", "3600")  # キャッシュを 1 時間（3600 秒）保持
+        return response, 204  # 204 No Content を返す
+
     """HTTP トリガーのエントリーポイント関数"""
     request_data = request.get_json(silent=True)
     print(request_data)
@@ -321,7 +330,8 @@ def manzai_agents(request):
                 }
             )
 
+    response = jsonify({"scripts": response_list,})
+    response.headers.add("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
+    response.headers.add("Vary", "Origin")
     # 📌 レスポンスを返す
-    return jsonify({
-        "scripts": response_list,
-    })
+    return response
