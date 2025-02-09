@@ -1,14 +1,23 @@
-from utils.firestore import db
-from utils.perplexity import get_info_by_perplexity
+import sys
+import os
+
+# `utils` の親ディレクトリを `sys.path` に追加
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from utillibs.firestore import db
+from utillibs.perplexity import get_info_by_perplexity
 
 # 芸人情報を取得
-comedians = db.collection("comedians").stream()
+comedians = db.collection("Comedians").get()
 
 for comedian in comedians:
+    id = comedian.id
+    data = comedian.to_dict()
+
     prompt = f"""
-        以下の芸人が芸人のショーレースで審査員を務めたかどうか調査してください。
+        以下の芸人が芸人のショーレースで審査員を務めた経験があるかどうか調査してください。
         ##対象芸人
-        {comedian.name}
+        {data['name']}
 
         ##出力形式
         以下の基準に従って、Boolean値のみを出力してください。
@@ -17,11 +26,13 @@ for comedian in comedians:
     """
 
     response = get_info_by_perplexity(prompt)
+    print('Boolean: ' + response)
 
     # 審査員は評価基準を調査しJudgesに追加
-    if response == 'True':
+    if 'True' in response:
+        print('審査基準を取得中')
         prompt = f"""
-            {comedian.name}の漫才ショーレース審査員時の評価基準について教えてください。
+            {data['name']}の漫才ショーレース審査員時の評価基準について教えてください。
           語尾は〜する傾向、で締めてください。
 
           ##例
@@ -30,9 +41,10 @@ for comedian in comedians:
         """
         criteria = get_info_by_perplexity(prompt)
 
+        print('Firestoreに追加中')
         db.collection('Judges').add(
             {
-                'comedian_id': comedian.id,
+                'comedian_id': id,
                 'criteria': criteria
             }
         )
