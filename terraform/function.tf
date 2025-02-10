@@ -44,7 +44,7 @@ resource "google_cloudfunctions2_function" "manzai_theme_generator" {
 
   service_config {
     ingress_settings = "ALLOW_ALL"  # HTTPトリガーを許可
-    timeout_seconds   = 180
+    timeout_seconds   = 300
     available_memory  = "512M"
     min_instance_count = 1
     max_instance_count = 3

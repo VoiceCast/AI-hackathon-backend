@@ -318,6 +318,7 @@ async def judgement(manzai_script):
 
     latest_script = manzai_script  # 初期値を設定
     start_time = datetime.now()  # 実行開始時間を記録
+    script_list = []
 
     async def run_graph():
         nonlocal latest_script
@@ -336,10 +337,12 @@ async def judgement(manzai_script):
             config,
         ):
             latest_script = event.get("generate", {}).get("manzai_script", latest_script)
-            if (datetime.now() - start_time).total_seconds() > 60:
-                print("⚠ タイムアウト: 60秒経過したため終了します。")
+            print(latest_script)
+            script_list.append(latest_script)
+            if (datetime.now() - start_time).total_seconds() > 90:
+                print("⚠ タイムアウト: 90秒経過したため終了します。")
                 return latest_script
-        return latest_script
+        return script_list
 
     try:
         return await asyncio.wait_for(run_graph(), timeout=60)
@@ -356,8 +359,8 @@ def manzai_agents(request):
         response.headers.add("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
         response.headers.add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        response.headers.add("Access-Control-Max-Age", "3600")  # キャッシュを 1 時間（3600 秒）保持
-        return response, 204  # 204 No Content を返す
+        response.headers.add("Access-Control-Max-Age", "3600")  # 1時間キャッシュ
+        return response, 204  # 204 No Content
 
     """HTTP トリガーのエントリーポイント関数"""
     request_data = request.get_json(silent=True)
@@ -367,62 +370,69 @@ def manzai_agents(request):
     boke_info, tsukkomi_info = assign_roles(comedians)
     boke_voice_characteristics = boke_info["skills"]["voice_characteristics"]
     tsukkomi_voice_characteristics = tsukkomi_info["skills"]["voice_characteristics"]
-    context = "タイムトラベル失敗というテーマで漫才をしてください。"
     theme = request_data['theme']
+    context = f"{theme}というテーマで漫才をしてください。"
+
+    # 🔹 初期のレスポンスデータ
     response_script = {
         "script": "",
         "theme": theme,
         "tsukkomi_voice": tsukkomi_voice_characteristics,
         "boke_voice": boke_voice_characteristics
     }
+
     if boke_info and tsukkomi_info:
         try:
             start_time = time.time()  # 処理開始時刻を記録
-            TIMEOUT = 90  # タイムアウト時間（秒）
+            TIMEOUT = 180  # タイムアウト時間（秒）
 
-            tsukkomi = first_tsukkomi_agent(theme, tsukkomi_info)
-            tsukkomi_text = extract_text_from_response(tsukkomi)
-            print("ツッコミ:", tsukkomi_text)
-            context += f"\n1. ツッコミ: {tsukkomi_text}"
+            async def async_main():
+                nonlocal context  # スクリプトの更新を可能にする
 
-            for i in range(5):
-                # 90秒経過したらループを抜ける
-                if time.time() - start_time > TIMEOUT:
-                    print("⚠ タイムアウト: 90秒経過したため処理を終了します。")
-                    break
-
-                time.sleep(4)  # API 負荷を減らすために4秒待つ
-
-                boke = boke_agent(theme, context, boke_info)
-                boke_text = extract_text_from_response(boke)
-                print(f"ボケ: {boke_text}\n")
-                context += f"\n{i + 2}. ボケ: {boke_text}"
-
-                tsukkomi = tsukkomi_agent(theme, context, tsukkomi_info)
+                tsukkomi = first_tsukkomi_agent(theme, tsukkomi_info)
                 tsukkomi_text = extract_text_from_response(tsukkomi)
-                print(f"ツッコミ: {tsukkomi_text}\n")
-                context += f"\n{i + 2}. ツッコミ: {tsukkomi_text}"
+                print("ツッコミ:", tsukkomi_text)
+                context += f"\n1. ツッコミ: {tsukkomi_text}"
 
-            context += "\nツッコミ: もうええわ。ありがとうございました。"
-            print("ツッコミ: もうええわ。ありがとうございました。")
+                for i in range(5):
+                    if time.time() - start_time > TIMEOUT:
+                        print("⚠ タイムアウト: 90秒経過したため処理を終了します。")
+                        break
+
+                    await asyncio.sleep(8)
+
+                    boke = boke_agent(theme, context, boke_info)
+                    boke_text = extract_text_from_response(boke)
+                    print(f"ボケ: {boke_text}\n")
+                    context += f"\n{i + 2}. ボケ: {boke_text}"
+
+                    tsukkomi = tsukkomi_agent(theme, context, tsukkomi_info)
+                    tsukkomi_text = extract_text_from_response(tsukkomi)
+                    print(f"ツッコミ: {tsukkomi_text}\n")
+                    context += f"\n{i + 2}. ツッコミ: {tsukkomi_text}"
+
+                context += "\nツッコミ: もうええわ。ありがとうございました。"
+                print("ツッコミ: もうええわ。ありがとうございました。")
+
+            # 🔹 非同期処理を同期的に実行
+            asyncio.run(async_main())
 
         except Exception as e:
             print(f"エラー発生: {e}")
-            # エラー発生時でも途中の context をレスポンスとして送る
-            response_script["script"] = context
-            response_data = {"scripts": response_script, "error": str(e)}
-            json_response = json.dumps(response_data, ensure_ascii=False)
-            response = Response(json_response, content_type="application/json; charset=utf-8")
-            response.headers.add("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
-            response.headers.add("Vary", "Origin")
-            return response
+            response_script["script"] = context  # 🔹 途中までのスクリプトを格納
+            response_script["error"] = str(e)  # 🔹 エラーメッセージを追加
 
+    # 🔹 90秒経過時でも `context` を確実にセット
     response_script["script"] = context
-    updated_script = judgement(context)
-    response_data = {"scripts": updated_script}
-    json_response = json.dumps(response_data, ensure_ascii=False)  # Unicodeエスケープを防ぐ
+
+    # 🔹 `judgement(context)` が非同期関数なら `asyncio.run()` で実行
+    updated_script = asyncio.run(judgement(context))
+
+    response_script["script"] = updated_script
+    json_response = json.dumps(response_script, ensure_ascii=False)
     response = Response(json_response, content_type="application/json; charset=utf-8")
     response.headers.add("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
     response.headers.add("Vary", "Origin")
+
     # 📌 レスポンスを返す
     return response
