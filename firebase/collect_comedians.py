@@ -1,9 +1,14 @@
 import requests
+import sys
+import os
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json
-from utils.firestore import db
-from utils.perplexity import get_info_by_perplexity
+
+# `utils` の親ディレクトリを `sys.path` に追加
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from utillibs.firestore import db
+from utillibs.perplexity import get_info_by_perplexity
 
 results = []  # 各コンビ毎の情報を格納するリスト
 # 例として対象のリストページURL（実際のURLに合わせて変更してください）

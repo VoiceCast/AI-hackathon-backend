@@ -1,50 +1,92 @@
 import sys
 import os
+import json
+import uuid
 
 # `utils` の親ディレクトリを `sys.path` に追加
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from utillibs.firestore import db
 from utillibs.perplexity import get_info_by_perplexity
 
 # 芸人情報を取得
-comedians = db.collection("Comedians").get()
+prompt = f"""
+    ## 命令
+    M1の歴代審査員について網羅的に調査し、以下の情報を出力してください。
 
-for comedian in comedians:
-    id = comedian.id
-    data = comedian.to_dict()
+    ##必要情報
+    - 名前(name)
+    - 審査基準(criteria)
+    - 所属事務所(agency)
+    - gender
+    - ボケかツッコミか(role)
+    - 特徴(specialty_topics)
+    - 声の特徴(voice_characteristics)
+    - 生年月日(birthdate)
+    - ネタを書く能力(writing_skill)
 
-    prompt = f"""
-        以下の芸人が芸人のショーレースで審査員を務めた経験があるかどうか調査してください。
-        ##対象芸人
-        {data['name']}
+    ##出力形式
+    - リスト化されたJSON形式だけを厳密に出力してください.そのほかの文章は一切出力してはなりません。
+    - ```jsonなども不要。{{}}で囲んでください。```
+    - 例
+    [
+        {{
+            "name": "ジョン・ドウ",
+            "criteria": "制限時間に厳しい",
+            "agency": "吉本興業",
+            "gender": "male",
+            "birthdate": "1990-01-01",
+            "skills": {{
+            "role": "performer",
+            "voice_characteristics": "深い声",
+            "specialty_topics": "独特の言葉選びや予想外の展開を用いた知的なワードセンスのボケを展開。",
+            "writing_skill": 5,
+            }}
+        }},
+        {{
+            "name": "ジョン・ドウ",
+            "criteria": "制限時間に厳しい",
+            "agency": "吉本興業",
+            "gender": "male",
+            "birthdate": "1990-01-01",
+            "skills": {{
+            "role": "performer",
+            "voice_characteristics": "深い声",
+            "specialty_topics": "独特の言葉選びや予想外の展開を用いた知的なワードセンスのボケを展開。",
+            "writing_skill": 5,
+            }}
+        }},
+    ]
+"""
 
-        ##出力形式
-        以下の基準に従って、Boolean値のみを出力してください。
-        - 審査員を務めた場合: True
-        - 審査員を務めていない場合: False
-    """
+response = get_info_by_perplexity(prompt)
 
-    response = get_info_by_perplexity(prompt)
-    print('Boolean: ' + response)
+try:
+    res = json.loads(response)
 
-    # 審査員は評価基準を調査しJudgesに追加
-    if 'True' in response:
-        print('審査基準を取得中')
-        prompt = f"""
-            {data['name']}の漫才ショーレース審査員時の評価基準について教えてください。
-          語尾は〜する傾向、で締めてください。
+    for comedian in res:
+        comedian_id = str(uuid.uuid4())
 
-          ##例
-          - 博多大吉：ネタのテンポや時間配分を厳密にチェックする傾向
-          - 若林正恭：独創性や新しい切り口を高く評価する傾向
-        """
-        criteria = get_info_by_perplexity(prompt)
-
-        print('Firestoreに追加中')
-        db.collection('Judges').add(
-            {
-                'comedian_id': id,
-                'criteria': criteria
+        # Comediansコレクションに追加
+        comedian_ref = db.collection("Comedians").document(comedian_id)
+        comedian_ref.set({
+            "name": comedian["name"],
+            "agency": comedian["agency"],
+            "gender": comedian["gender"],
+            "birthdate": comedian["birthdate"],
+            "skills": {
+                "role": comedian["skills"]["role"],
+                "voice_characteristics": comedian["skills"]["voice_characteristics"],
+                "writing_skill": comedian["skills"]["writing_skill"],
+                "specialty_topics": comedian["skills"]["specialty_topics"]
             }
-        )
+        })
+
+        # Judges コレクションに追加（ComediansのIDを参照）
+        judge_ref = db.collection("Judges").document()
+        judge_ref.set({
+            "comedian_id": comedian_id,
+            "criteria": comedian["criteria"]
+        })
+except json.JSONDecodeError as e:
+    print('パースに失敗しました', e)
+    print('response: ', response)
