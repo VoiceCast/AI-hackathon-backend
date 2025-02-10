@@ -3,7 +3,6 @@ import functions_framework
 import firebase_admin
 from firebase_admin import credentials, firestore
 from flask import jsonify, Response
-from google.cloud.dialogflowcx_v3beta1 import AgentsClient
 import vertexai
 from vertexai.generative_models import GenerativeModel, SafetySetting
 import time
@@ -20,14 +19,14 @@ if not firebase_admin._apps:  # すでに初期化されていないか確認
 db = firestore.client()
 
 # 🎭 Vertex AI クライアント
-vertex_client = AgentsClient()
+#vertex_client = AgentsClient()
 PROJECT_ID = "ai-agent-hackathon-447707"
-LOCATION = "asia-northeast1"
-BOKE_AGENT_ID = "7f52fb64-6967-435f-b19d-85104576551a"
-TSUKKOMI_AGENT_ID = "29af0432-abd8-40ed-b788-27e4bc17c13d"
-JUDGE_AGENT_ID = "2aee97f2-0d98-40b1-ac23-8e446b1633db"
-SESSION_ID = "10b063a6-fe87-40c1-a44e-a53d29baabf6"
-ENVIRONMENT_ID = "-"  # デフォルト環境を使用
+#LOCATION = "asia-northeast1"
+#BOKE_AGENT_ID = "7f52fb64-6967-435f-b19d-85104576551a"
+#TSUKKOMI_AGENT_ID = "29af0432-abd8-40ed-b788-27e4bc17c13d"
+#JUDGE_AGENT_ID = "2aee97f2-0d98-40b1-ac23-8e446b1633db"
+#SESSION_ID = "10b063a6-fe87-40c1-a44e-a53d29baabf6"
+#ENVIRONMENT_ID = "-"  # デフォルト環境を使用
 ALLOWED_ORIGIN = "http://localhost:3000"
 
 def get_random_comedians_data():
@@ -38,91 +37,6 @@ def get_random_comedians_data():
     scripts_data = [doc.to_dict() for doc in random_docs]
     print(scripts_data)  # 確認用
     return scripts_data
-
-def create_theme():
-    prompt = """
-    #指令
-    漫才のテーマを5つ考えて下さい。
-    考えた5つのテーマをJSON形式で出力して下さい。
-    テーマはお笑いの要素を含みつつ独自性のあるものを考えて下さい。
-
-    #形式
-    {
-        "themes": [
-            {
-                "theme": "~~~"
-                "description":"~~~"
-            },
-            {
-                "theme": "~~~"
-                "description":"~~~"
-            },
-            {
-                "theme": "~~~"
-                "description":"~~~"
-            },
-            {
-                "theme": "~~~"
-                "description":"~~~"
-            },
-            {
-                "theme": "~~~"
-                "description":"~~~"
-            }
-        ]
-    }
-    """
-    response = send_theme_prompt(prompt)
-
-    theme_text = response.candidates[0].content.parts[0].text
-    theme_data = json.loads(theme_text)
-    theme_list = [item["theme"] for item in theme_data["themes"]]
-
-    return theme_list
-
-def send_theme_prompt(prompt):
-    """Gemini API にメッセージを送信し、ボケやツッコミを生成"""
-    vertexai.init(
-        project="768904645084",
-        location="us-central1",
-        api_endpoint="us-central1-aiplatform.googleapis.com"
-    )
-
-    model = GenerativeModel("gemini-1.5-pro")
-
-    chat = model.start_chat(response_validation=False)  # 変更点
-
-    try:
-        result = chat.send_message(
-            [prompt],
-            generation_config={
-                "max_output_tokens": 500,
-                "temperature": 1,
-                "top_p": 0.9,
-            },
-            safety_settings=[
-                SafetySetting(
-                    category=SafetySetting.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                    threshold=SafetySetting.HarmBlockThreshold.BLOCK_ONLY_HIGH  # 厳しすぎるフィルタを緩和
-                ),
-                SafetySetting(
-                    category=SafetySetting.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                    threshold=SafetySetting.HarmBlockThreshold.BLOCK_ONLY_HIGH
-                ),
-                SafetySetting(
-                    category=SafetySetting.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                    threshold=SafetySetting.HarmBlockThreshold.BLOCK_ONLY_HIGH
-                ),
-                SafetySetting(
-                    category=SafetySetting.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                    threshold=SafetySetting.HarmBlockThreshold.BLOCK_ONLY_HIGH
-                ),
-            ]
-        )
-        return result
-    except Exception as e:
-        print(f"エラー発生: {e}")
-        return ""
 
 def send_message(prompt):
     """Gemini API にメッセージを送信し、ボケやツッコミを生成"""
@@ -311,8 +225,7 @@ def manzai_agents(request):
     boke_voice_characteristics = boke_info["skills"]["voice_characteristics"]
     tsukkomi_voice_characteristics = tsukkomi_info["skills"]["voice_characteristics"]
     context = "タイムトラベル失敗というテーマで漫才をしてください。"
-    themes = create_theme()
-    theme = themes[0]
+    theme = request_data['theme']
     response_script = {
         "script": "",
         "theme": theme,
