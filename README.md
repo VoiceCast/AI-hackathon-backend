@@ -1,4 +1,3 @@
-```markdown:README.md
 # AI漫才師 - AIによる漫才スクリプト生成システム
 
 ## プロジェクトの概要
@@ -8,9 +7,8 @@
 ## 技術スタック
 
 ### フロントエンド
-- React/Vue.js
+- Next.js
 - TypeScript
-- Material-UI/Tailwind CSS
 
 ### バックエンド
 - Cloud Functions
@@ -20,7 +18,8 @@
 ### AI/ML
 - Vertex AI
 - Gemini
-- Dialogflow CX
+- LangGraph
+- Langchain
 
 ## ユーザー像と課題
 
@@ -80,7 +79,7 @@ def get_random_comedians_data():
 
 - Firestoreのコレクション設計
   - Comedians: 芸人の基本情報
-  - ComedianSkills: 芸人のスキルセット
+  - Judges: 審査員の基本情報
   - Scripts: 生成された漫才スクリプト
   - Evaluations: 審査結果
 
@@ -235,4 +234,3 @@ graph TB
 - 新機能のリクエスト
 
 ご意見・ご質問は、Issues または Pull Requests にてお願いいたします。
-```
