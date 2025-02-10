@@ -39,19 +39,6 @@ Firestore はドキュメントベースの NoSQL 構造を持ちます。それ
 
 ---
 
-### 2. `Units`
-
-お笑いユニットやグループ情報を管理します。
-
-#### ドキュメントフィールド:
-
-- `id` (string): ユニットのユニーク ID。
-- `comedian_ids` (array of strings): ユニットに所属する芸人の ID リスト。
-- `members` (array of strings): ユニットメンバーの名前リスト。
-- `notes` (string): ユニットに関する追加情報。
-
----
-
 ### 3. `Scripts`
 
 芸人によって作成されたスクリプト情報を管理します。
@@ -72,6 +59,7 @@ Firestore はドキュメントベースの NoSQL 構造を持ちます。それ
 
 - `id` (string): 審査員のユニーク ID。
 - `comedian_id` (string): 審査員が芸人である場合、その芸人 ID。
+- `criteria`(string): 審査基準
 
 ---
 
@@ -94,7 +82,6 @@ Firestore はドキュメントベースの NoSQL 構造を持ちます。それ
 
 ## 関係性
 
-- **Comedians & Units**: ユニットは `comedian_ids` を通じて芸人を参照します。
 - **Comedians & Scripts**: スクリプトは `comedian_ids` を通じて芸人を参照します。
 - **Judges & Comedians**: 審査員は `comedian_id` を通じて芸人に関連付けられる場合があります。
 - **Evaluations & Judges/Scripts**: 評価は `judge_id` と `script_id` を通じて審査員とスクリプトを参照します。
@@ -121,16 +108,12 @@ Firestore はドキュメントベースの NoSQL 構造を持ちます。それ
 }
 ```
 
-### Units の例
-
+### Judgesの例
 ```json
 {
-  "id": "unitId1",
-  "comedian_ids": ["comedianId1", "comedianId2"],
-  "members": ["ジョン・ドウ", "ジェーン・スミス"],
-  "notes": "有名なお笑いデュオ"
+  "comedian_id": comedian_id,
+  "criteria": "制限時間に厳しい"
 }
-```
 
 ### Evaluations の例
 

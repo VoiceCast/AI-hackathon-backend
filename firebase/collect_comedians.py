@@ -1,7 +1,12 @@
 import requests
+import sys
+import os
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json
+
+# `utils` の親ディレクトリを `sys.path` に追加
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utillibs.firestore import db
 from utillibs.perplexity import get_info_by_perplexity
 
