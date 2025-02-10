@@ -5,3 +5,6 @@ google-cloud-dialogflow-cx
 google-cloud-firestore
 google-cloud-storage
 vertexai
+langchain_core
+langchain_google_vertexai
+langgraph

@@ -1,3 +1,4 @@
 vertexai
 fastapi
 langgraph
+asyncio
