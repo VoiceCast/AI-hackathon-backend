@@ -2,14 +2,13 @@ import random
 import functions_framework
 import firebase_admin
 from firebase_admin import credentials, firestore
-from flask import jsonify
+from flask import jsonify, Response
 from google.cloud.dialogflowcx_v3beta1 import AgentsClient
 import vertexai
 from vertexai.generative_models import GenerativeModel, SafetySetting
 import time
 import os
 import json
-
 
 # 🔥 Firebase 初期化
 firebase_cred_path = os.getenv("FIREBASE_CREDENTIALS")
@@ -217,7 +216,12 @@ def boke_agent(theme, context, geinin_info):
     ・芸人情報と会話の流れを参考に回答を生成してください。
     ・生成したボケの文章だけを出力してください。
     """
-    return send_message(boke_prompt)
+    try:
+        response = send_message(boke_prompt)
+        return response
+    except Exception as e:
+        print(f"error on boke agent: {e}")
+        return ""
 
 
 def tsukkomi_agent(theme, context, geinin_info):
@@ -240,7 +244,13 @@ def tsukkomi_agent(theme, context, geinin_info):
     ・芸人情報と会話の流れを参考にしてください。
     ・生成したツッコミの文章以外を出力するのは禁止です。
     """
-    return send_message(tsukkomi_prompt)
+    try:
+        response = send_message(tsukkomi_prompt)
+        return response
+    except Exception as e:
+        print(f"error on tsukkomi agent: {e}")
+        return ""
+
 
 
 def first_tsukkomi_agent(theme, geinin_info):
@@ -260,7 +270,12 @@ def first_tsukkomi_agent(theme, geinin_info):
     ・芸人情報と会話の流れを参考にしてください。
     ・生成したフリ以外の文章以外を出力するのは禁止です。
     """
-    return send_message(tsukkomi_prompt)
+    try:
+        response = send_message(tsukkomi_prompt)
+        return response
+    except Exception as e:
+        print(f"error on tsukkomi agent: {e}")
+        return ""
 
 def extract_text_from_response(response):
     """Gemini API のレスポンスからツッコミのテキストを抽出"""
@@ -293,13 +308,19 @@ def manzai_agents(request):
 
     comedians = get_random_comedians_data()
     boke_info, tsukkomi_info = assign_roles(comedians)
-    boke_voice_characteristics = boke_info.voice_characteristics
-    tsukkomi_voice_characteristics = tsukkomi_info.voice_characteristics
+    boke_voice_characteristics = boke_info["skills"]["voice_characteristics"]
+    tsukkomi_voice_characteristics = tsukkomi_info["skills"]["voice_characteristics"]
     context = "タイムトラベル失敗というテーマで漫才をしてください。"
     themes = create_theme()
-    response_list = []
-    for theme in themes:
-        if boke_info and tsukkomi_info:
+    theme = themes[0]
+    response_script = {
+        "script": "",
+        "theme": theme,
+        "tsukkomi_voice": tsukkomi_voice_characteristics,
+        "boke_voice": boke_voice_characteristics
+    }
+    if boke_info and tsukkomi_info:
+        try:
             tsukkomi = first_tsukkomi_agent(theme, tsukkomi_info)
             tsukkomi_text = extract_text_from_response(tsukkomi)
             print("ツッコミ:", tsukkomi_text)
@@ -311,26 +332,31 @@ def manzai_agents(request):
                 boke = boke_agent(theme, context, boke_info)
                 boke_text = extract_text_from_response(boke)
                 print(f"ボケ: {boke_text}\n")
-                context += f"\n{i}. ボケ:{boke_text}"
+                context += f"\n{i + 2}. ボケ: {boke_text}"
 
                 tsukkomi = tsukkomi_agent(theme, context, tsukkomi_info)
                 tsukkomi_text = extract_text_from_response(tsukkomi)
                 print(f"ツッコミ: {tsukkomi_text}\n")
+                context += f"\n{i + 2}. ツッコミ: {tsukkomi_text}"
 
-                context += f"\n{i}. ツッコミ: {tsukkomi_text}"
+            context += "ツッコミ: もうええわ。ありがとうございました。"
+            print("ツッコミ: もうええわ。ありがとうございました。")
 
-            context += "ツッコミ:　もうええわ。ありがとうございました。"
-            print("ツッコミ:　もうええわ。ありがとうございました。")
-            response_list.append(
-                {
-                    "script": context,
-                    "theme": theme,
-                    "tsukkomi_voice": tsukkomi_voice_characteristics,
-                    "boke_voice": boke_voice_characteristics
-                }
-            )
+        except Exception as e:
+            print(f"エラー発生: {e}")
+            # エラー発生時でも途中の context をレスポンスとして送る
+            response_script["script"] = context
+            response_data = {"scripts": response_script, "error": str(e)}
+            json_response = json.dumps(response_data, ensure_ascii=False)
+            response = Response(json_response, content_type="application/json; charset=utf-8")
+            response.headers.add("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
+            response.headers.add("Vary", "Origin")
+            return response  # ここでエラー発生時に中断してレスポンスを返す
 
-    response = jsonify({"scripts": response_list,})
+    response_script["script"] = context
+    response_data = {"scripts": response_script}
+    json_response = json.dumps(response_data, ensure_ascii=False)  # Unicodeエスケープを防ぐ
+    response = Response(json_response, content_type="application/json; charset=utf-8")
     response.headers.add("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
     response.headers.add("Vary", "Origin")
     # 📌 レスポンスを返す

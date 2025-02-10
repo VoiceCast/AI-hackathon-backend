@@ -2,8 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json
-from utils.firestore import db
-from utils.perplexity import get_info_by_perplexity
+from utillibs.firestore import db
+from utillibs.perplexity import get_info_by_perplexity
 
 results = []  # 各コンビ毎の情報を格納するリスト
 # 例として対象のリストページURL（実際のURLに合わせて変更してください）
